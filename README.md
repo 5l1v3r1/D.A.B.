@@ -16,9 +16,9 @@ DoS (Denial of Service) tool written in Python (Python 2.7) to overflow a server
 > Launch!
 
 ### Initialize the Attack
-```bash
-root@ubuntu:~# ./dab.py --server <target> --port <port> --type http|udp|tcp --post|get --message "henlo world"
-```
+>```bash
+> root@ubuntu:~# ./dab.py --server <target> --port <port> --type http|udp|tcp --post|get --message "henlo world"
+> ```
 > Watch your target fall!
 
 ## Disclaimer
