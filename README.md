@@ -9,11 +9,12 @@
 DoS (Denial of Service) tool written in Python (Python 2.7) to overflow a server with data. 
 
 ## Setup Script
-> ```bash
-root@ubuntu:~# dos2unix dab.py
-root@ubuntu:~# chmod +x dab.py
-```
+>```bash
+> root@ubuntu:~# dos2unix dab.py
+> root@ubuntu:~# chmod +x dab.py
+> ```
 > Launch!
+
 ### Initialize the Attack
 ```bash
 root@ubuntu:~# ./dab.py --server <target> --port <port> --type http|udp|tcp --post|get --message "henlo world"
@@ -35,7 +36,6 @@ Updates will hopefully be frequent. Apollogies if they come a bit late.
 #### Finally v2.0 is here!
 This update now consists of a new feature that allows you to port scan the target while starting
 a new thread to flood that open port! Only available via TCP! 
-> [ Syntax: ./dab.py --server localhost --type tcp --port-threading ]
 
 ## Update History
 > #### v2.0
